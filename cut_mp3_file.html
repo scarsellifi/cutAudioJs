@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test Cut Audio</title>
+  </head>
+  <body>
+    <h1>Test Audio Cutter</h1>
+    <button id="cutAudioBtn">Cut and Play Audio</button>
+    <audio controls id="audioElement"></audio>
+
+    <script type="module" src="cutAudio.js"></script>
+    <script type="module">
+      import { cutAudioFileAsync } from "./cutAudio.js";
+
+      document
+        .getElementById("cutAudioBtn")
+        .addEventListener("click", async () => {
+          try {
+            const response = await fetch("http://127.0.0.1:5500/test_.mp3");
+            console.log("file download");
+            const arrayBuffer = await response.arrayBuffer();
+            console.log("file buffer");
+            console.log(arrayBuffer);
+            const cutBuffer = await cutAudioFileAsync(arrayBuffer, 3, 6);
+            console.log("file cut");
+            console.log(cutBuffer);
+
+            /* const audioContext = new (window.AudioContext ||
+              window.webkitAudioContext)();
+            const source = audioContext.createBufferSource();
+            source.buffer = cutBuffer;
+            source.connect(audioContext.destination);
+            source.start(); */
+
+            /* const audioBlob = new Blob([cutBuffer], { type: "audio/mp3" });
+            console.log(audioBlob);
+            const audioUrl = URL.createObjectURL(audioBlob);
+            console.log(`audio blob url ${audioUrl}`);
+            document.getElementById("audioElement").src = audioUrl; */
+            // Crea un nuovo contesto audio e riproduci il buffer tagliato
+
+            // Converti AudioBuffer in Blob (WAV)
+            const wavBlob = await convertAudioBufferToWavBlob(cutBuffer);
+
+            // Crea un URL oggetto dal Blob
+            const url = URL.createObjectURL(wavBlob);
+
+            // Crea un elemento <a> per il download
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "test_2.wav"; // Nota: il file sarà WAV, non MP3
+            document.body.appendChild(a);
+            a.click();
+
+            // Pulizia
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          } catch (error) {
+            console.error("Error cutting and playing audio:", error);
+          }
+        });
+    </script>
+
+    <script>
+      async function convertAudioBufferToWavBlob(audioBuffer) {
+        const numberOfChannels = audioBuffer.numberOfChannels;
+        const sampleRate = audioBuffer.sampleRate;
+        const format = 1; // PCM
+        const bitDepth = 16;
+
+        let bufferLength = 44; // Lunghezza dell'header WAV
+        for (let i = 0; i < numberOfChannels; i++) {
+          bufferLength += audioBuffer.getChannelData(i).length * 2; // 2 bytes per sample
+        }
+
+        const buffer = new ArrayBuffer(bufferLength);
+        const view = new DataView(buffer);
+
+        // Scrivi l'header WAV
+        writeString(view, 0, "RIFF"); // ChunkID
+        view.setUint32(4, 36 + bufferLength - 44, true); // ChunkSize
+        writeString(view, 8, "WAVE"); // Format
+        writeString(view, 12, "fmt "); // Subchunk1ID
+        view.setUint32(16, 16, true); // Subchunk1Size
+        view.setUint16(20, format, true); // AudioFormat
+        view.setUint16(22, numberOfChannels, true); // NumChannels
+        view.setUint32(24, sampleRate, true); // SampleRate
+        view.setUint32(28, sampleRate * numberOfChannels * 2, true); // ByteRate
+        view.setUint16(32, numberOfChannels * 2, true); // BlockAlign
+        view.setUint16(34, bitDepth, true); // BitsPerSample
+        writeString(view, 36, "data"); // Subchunk2ID
+        view.setUint32(40, bufferLength - 44, true); // Subchunk2Size
+
+        // Scrivi i campioni audio
+        let offset = 44;
+        for (let channel = 0; channel < numberOfChannels; channel++) {
+          const channelData = audioBuffer.getChannelData(channel);
+          for (let i = 0; i < channelData.length; i++, offset += 2) {
+            const sample = Math.max(-1, Math.min(1, channelData[i]));
+            view.setInt16(
+              offset,
+              sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+              true
+            );
+          }
+        }
+
+        return new Blob([view], { type: "audio/wav" });
+      }
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+    </script>
+  </body>
+</html>
