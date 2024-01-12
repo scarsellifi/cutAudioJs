@@ -22,7 +22,7 @@
             const arrayBuffer = await response.arrayBuffer();
             console.log("file buffer");
             console.log(arrayBuffer);
-            const cutBuffer = await cutAudioFileAsync(arrayBuffer, 3, 6);
+            const cutBuffer = await cutAudioFileAsync(arrayBuffer, 0, 3);
             console.log("file cut");
             console.log(cutBuffer);
 
@@ -64,6 +64,8 @@
 
     <script>
       async function convertAudioBufferToWavBlob(audioBuffer) {
+        audioBuffer = convertMultiChannelToMono(audioBuffer);
+
         const numberOfChannels = audioBuffer.numberOfChannels;
         const sampleRate = audioBuffer.sampleRate;
         const format = 1; // PCM
@@ -114,6 +116,32 @@
           view.setUint8(offset + i, string.charCodeAt(i));
         }
       }
+
+      function convertMultiChannelToMono(audioBuffer) {
+        const numberOfChannels = audioBuffer.numberOfChannels;
+
+        // Crea un nuovo AudioBuffer mono
+        const monoBuffer = new AudioBuffer({
+          length: audioBuffer.length,
+          sampleRate: audioBuffer.sampleRate,
+          numberOfChannels: 1,
+        });
+
+        const monoChannel = monoBuffer.getChannelData(0);
+
+        // Mixdown dei canali
+        for (let i = 0; i < audioBuffer.length; i++) {
+          let sum = 0;
+          for (let channel = 0; channel < numberOfChannels; channel++) {
+            sum += audioBuffer.getChannelData(channel)[i];
+          }
+          monoChannel[i] = sum / numberOfChannels;
+        }
+
+        return monoBuffer;
+      }
+
+      // Utilizza questa funzione passandole un AudioBuffer multicanale
     </script>
   </body>
 </html>
