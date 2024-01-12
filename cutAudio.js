@@ -59,3 +59,155 @@ export async function cutAudioFileAsync(audioData, startTime, endTime) {
     throw e;
   }
 }
+
+export async function convertAudioBufferToWavBlob(audioBuffer) {
+  audioBuffer = convertMultiChannelToMono(audioBuffer);
+
+  const numberOfChannels = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+  const format = 1; // PCM
+  const bitDepth = 16;
+
+  let bufferLength = 44; // Lunghezza dell'header WAV
+  for (let i = 0; i < numberOfChannels; i++) {
+    bufferLength += audioBuffer.getChannelData(i).length * 2; // 2 bytes per sample
+  }
+
+  const buffer = new ArrayBuffer(bufferLength);
+  const view = new DataView(buffer);
+
+  // Scrivi l'header WAV
+  writeString(view, 0, "RIFF"); // ChunkID
+  view.setUint32(4, 36 + bufferLength - 44, true); // ChunkSize
+  writeString(view, 8, "WAVE"); // Format
+  writeString(view, 12, "fmt "); // Subchunk1ID
+  view.setUint32(16, 16, true); // Subchunk1Size
+  view.setUint16(20, format, true); // AudioFormat
+  view.setUint16(22, numberOfChannels, true); // NumChannels
+  view.setUint32(24, sampleRate, true); // SampleRate
+  view.setUint32(28, sampleRate * numberOfChannels * 2, true); // ByteRate
+  view.setUint16(32, numberOfChannels * 2, true); // BlockAlign
+  view.setUint16(34, bitDepth, true); // BitsPerSample
+  writeString(view, 36, "data"); // Subchunk2ID
+  view.setUint32(40, bufferLength - 44, true); // Subchunk2Size
+
+  // Scrivi i campioni audio
+  let offset = 44;
+  for (let channel = 0; channel < numberOfChannels; channel++) {
+    const channelData = audioBuffer.getChannelData(channel);
+    for (let i = 0; i < channelData.length; i++, offset += 2) {
+      const sample = Math.max(-1, Math.min(1, channelData[i]));
+      view.setInt16(
+        offset,
+        sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+        true
+      );
+    }
+  }
+
+  return new Blob([view], { type: "audio/wav" });
+}
+
+function writeString(view, offset, string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
+
+function convertMultiChannelToMono(audioBuffer) {
+  const numberOfChannels = audioBuffer.numberOfChannels;
+
+  // Crea un nuovo AudioBuffer mono
+  const monoBuffer = new AudioBuffer({
+    length: audioBuffer.length,
+    sampleRate: audioBuffer.sampleRate,
+    numberOfChannels: 1,
+  });
+
+  const monoChannel = monoBuffer.getChannelData(0);
+
+  // Mixdown dei canali
+  for (let i = 0; i < audioBuffer.length; i++) {
+    let sum = 0;
+    for (let channel = 0; channel < numberOfChannels; channel++) {
+      sum += audioBuffer.getChannelData(channel)[i];
+    }
+    monoChannel[i] = sum / numberOfChannels;
+  }
+
+  return monoBuffer;
+}
+
+/**
+ * Represents audio data including its URL, start and stop times, and an AudioBuffer.
+ *
+ * @example
+ * // Example usage:
+ * let myAudioData = new AudioData('http://example.com/audio.wav', 0, 10);
+ * // Later on, you can set the AudioBuffer
+ * myAudioData.setAudioBuffer(loadedAudioBuffer);
+ */
+export class AudioData {
+  /**
+   * Constructs an instance of AudioData.
+   * @param {string} url - The URL of the audio file.
+   * @param {number} start - The start time of the audio segment in seconds.
+   * @param {number} stop - The stop time of the audio segment in seconds.
+   */
+  static audioBuffers = [];
+
+  constructor(url, start, stop) {
+    this.url = url; // URL of the audio file
+    this.start = start; // Start time of the audio segment (in seconds)
+    this.stop = stop; // Stop time of the audio segment (in seconds)
+    this.audioBuffer = null; // AudioBuffer, initially set to null
+  }
+
+  /**
+   * Sets the AudioBuffer for this audio data.
+   * @param {AudioBuffer} audioBuffer - The AudioBuffer to be associated with this audio data.
+   */
+  setAudioBuffer(audioBuffer) {
+    this.audioBuffer = audioBuffer;
+    AudioData.audioBuffers.push(audioBuffer);
+  }
+
+  static getAllAudioBuffers() {
+    return AudioData.audioBuffers;
+  }
+
+  // Add any other methods that might be useful for this class
+}
+export function concatenateAudioBuffers(audioBuffers) {
+  // Assicurati che ci siano AudioBuffer da concatenare
+  if (audioBuffers.length === 0) {
+    throw new Error("No audio buffers to concatenate");
+  }
+
+  // Calcola la lunghezza totale dei buffer
+  const totalLength = audioBuffers.reduce(
+    (sum, buffer) => sum + buffer.length,
+    0
+  );
+
+  // Crea un nuovo AudioBuffer per contenere i dati concatenati
+  const sampleRate = audioBuffers[0].sampleRate; // Assumi che tutti i buffer abbiano la stessa frequenza di campionamento
+  const concatenatedBuffer = new AudioContext().createBuffer(
+    audioBuffers[0].numberOfChannels,
+    totalLength,
+    sampleRate
+  );
+
+  // Copia i dati audio in un unico buffer
+  let offset = 0;
+  audioBuffers.forEach((buffer) => {
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      concatenatedBuffer
+        .getChannelData(channel)
+        .set(buffer.getChannelData(channel), offset);
+    }
+    offset += buffer.length;
+  });
+
+  return concatenatedBuffer;
+}

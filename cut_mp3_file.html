@@ -11,34 +11,107 @@
 
     <script type="module" src="cutAudio.js"></script>
     <script type="module">
-      import { cutAudioFileAsync } from "./cutAudio.js";
+      import {
+        cutAudioFileAsync,
+        convertAudioBufferToWavBlob,
+        AudioData,
+        concatenateAudioBuffers,
+      } from "./cutAudio.js";
 
+      const audioDataArray = [
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
+      ];
+
+      function printAudioBuffersDetails() {
+        const allAudioBuffers = AudioData.getAllAudioBuffers();
+        allAudioBuffers.forEach((audioBuffer, index) => {
+          console.dir(audioBuffer);
+          console.log(`AudioBuffer ${index}:`);
+          // Qui puoi accedere a specifiche proprietà dell'AudioBuffer
+          // Ad esempio, length, duration, sampleRate, etc.
+          console.log(`  Length: ${audioBuffer.length}`);
+          console.log(`  Duration: ${audioBuffer.duration}`);
+          console.log(`  Sample Rate: ${audioBuffer.sampleRate}`);
+          // Aggiungi altre proprietà che desideri visualizzare
+        });
+      }
+
+      function fetchAudioBuffer(audioDataArray) {
+        // Usa map per creare un array di promesse
+        const promises = audioDataArray.map(async (audiodata) => {
+          const response = await fetch(audiodata.url);
+          console.log("file download");
+          const arrayBuffer = await response.arrayBuffer();
+          console.log("file buffer");
+          console.log(arrayBuffer);
+          const cutBuffer = await cutAudioFileAsync(
+            arrayBuffer,
+            audiodata.start,
+            audiodata.stop
+          );
+          console.log("file cut");
+          console.log(cutBuffer);
+          audiodata.setAudioBuffer(cutBuffer);
+        });
+
+        // Restituisce una promessa che si risolve quando tutte le promesse nell'array sono risolte
+        return Promise.all(promises);
+      }
+
+      // Modifica il listener per gestire la promessa
       document
         .getElementById("cutAudioBtn")
         .addEventListener("click", async () => {
+          await fetchAudioBuffer(audioDataArray);
+          console.log(audioDataArray);
+
+          console.log(`allAudioBuffer ${AudioData.getAllAudioBuffers()} --- `);
+          printAudioBuffersDetails();
+
+          const cutBuffer = concatenateAudioBuffers(
+            AudioData.getAllAudioBuffers()
+          );
+          const wavBlob = await convertAudioBufferToWavBlob(cutBuffer);
+
+          // Crea un URL oggetto dal Blob
+          const url = URL.createObjectURL(wavBlob);
+
+          // Crea un elemento <a> per il download
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "test_2.wav"; // Nota: il file sarà WAV, non MP3
+          document.body.appendChild(a);
+          a.click();
+
+          // Pulizia
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+
+      /*document
+        .getElementById("cutAudioBtn")
+        .addEventListener("click", async () => {
+          fetchAudioBuffer(audioDataArray);
+          console.log(audioDataArray);
+          console.log(`allAudioBuffer ${AudioData.getAllAudioBuffers()} --- `);
+
           try {
             const response = await fetch("http://127.0.0.1:5500/test_.mp3");
             console.log("file download");
             const arrayBuffer = await response.arrayBuffer();
             console.log("file buffer");
             console.log(arrayBuffer);
-            const cutBuffer = await cutAudioFileAsync(arrayBuffer, 0, 3);
+            const cutBuffer = await cutAudioFileAsync(
+              arrayBuffer,
+              0.523,
+              2.341
+            );
             console.log("file cut");
             console.log(cutBuffer);
-
-            /* const audioContext = new (window.AudioContext ||
-              window.webkitAudioContext)();
-            const source = audioContext.createBufferSource();
-            source.buffer = cutBuffer;
-            source.connect(audioContext.destination);
-            source.start(); */
-
-            /* const audioBlob = new Blob([cutBuffer], { type: "audio/mp3" });
-            console.log(audioBlob);
-            const audioUrl = URL.createObjectURL(audioBlob);
-            console.log(`audio blob url ${audioUrl}`);
-            document.getElementById("audioElement").src = audioUrl; */
-            // Crea un nuovo contesto audio e riproduci il buffer tagliato
 
             // Converti AudioBuffer in Blob (WAV)
             const wavBlob = await convertAudioBufferToWavBlob(cutBuffer);
@@ -56,92 +129,13 @@
             // Pulizia
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+
           } catch (error) {
             console.error("Error cutting and playing audio:", error);
           }
+
         });
-    </script>
-
-    <script>
-      async function convertAudioBufferToWavBlob(audioBuffer) {
-        audioBuffer = convertMultiChannelToMono(audioBuffer);
-
-        const numberOfChannels = audioBuffer.numberOfChannels;
-        const sampleRate = audioBuffer.sampleRate;
-        const format = 1; // PCM
-        const bitDepth = 16;
-
-        let bufferLength = 44; // Lunghezza dell'header WAV
-        for (let i = 0; i < numberOfChannels; i++) {
-          bufferLength += audioBuffer.getChannelData(i).length * 2; // 2 bytes per sample
-        }
-
-        const buffer = new ArrayBuffer(bufferLength);
-        const view = new DataView(buffer);
-
-        // Scrivi l'header WAV
-        writeString(view, 0, "RIFF"); // ChunkID
-        view.setUint32(4, 36 + bufferLength - 44, true); // ChunkSize
-        writeString(view, 8, "WAVE"); // Format
-        writeString(view, 12, "fmt "); // Subchunk1ID
-        view.setUint32(16, 16, true); // Subchunk1Size
-        view.setUint16(20, format, true); // AudioFormat
-        view.setUint16(22, numberOfChannels, true); // NumChannels
-        view.setUint32(24, sampleRate, true); // SampleRate
-        view.setUint32(28, sampleRate * numberOfChannels * 2, true); // ByteRate
-        view.setUint16(32, numberOfChannels * 2, true); // BlockAlign
-        view.setUint16(34, bitDepth, true); // BitsPerSample
-        writeString(view, 36, "data"); // Subchunk2ID
-        view.setUint32(40, bufferLength - 44, true); // Subchunk2Size
-
-        // Scrivi i campioni audio
-        let offset = 44;
-        for (let channel = 0; channel < numberOfChannels; channel++) {
-          const channelData = audioBuffer.getChannelData(channel);
-          for (let i = 0; i < channelData.length; i++, offset += 2) {
-            const sample = Math.max(-1, Math.min(1, channelData[i]));
-            view.setInt16(
-              offset,
-              sample < 0 ? sample * 0x8000 : sample * 0x7fff,
-              true
-            );
-          }
-        }
-
-        return new Blob([view], { type: "audio/wav" });
-      }
-
-      function writeString(view, offset, string) {
-        for (let i = 0; i < string.length; i++) {
-          view.setUint8(offset + i, string.charCodeAt(i));
-        }
-      }
-
-      function convertMultiChannelToMono(audioBuffer) {
-        const numberOfChannels = audioBuffer.numberOfChannels;
-
-        // Crea un nuovo AudioBuffer mono
-        const monoBuffer = new AudioBuffer({
-          length: audioBuffer.length,
-          sampleRate: audioBuffer.sampleRate,
-          numberOfChannels: 1,
-        });
-
-        const monoChannel = monoBuffer.getChannelData(0);
-
-        // Mixdown dei canali
-        for (let i = 0; i < audioBuffer.length; i++) {
-          let sum = 0;
-          for (let channel = 0; channel < numberOfChannels; channel++) {
-            sum += audioBuffer.getChannelData(channel)[i];
-          }
-          monoChannel[i] = sum / numberOfChannels;
-        }
-
-        return monoBuffer;
-      }
-
-      // Utilizza questa funzione passandole un AudioBuffer multicanale
+        */
     </script>
   </body>
 </html>
