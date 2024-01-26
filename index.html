@@ -19,34 +19,7 @@
     </p>
 
     <pre><code>
-      import { AudioData, cutAudio, to_wav, playAudio } from "./cutAudio.js";
-
-      const audioDataArray = [
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 10, 12),
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 8, 10),
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 4, 6),
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 2, 4),
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 0, 2),
-      ];
-
-
-      document
-        .getElementById("cutAudioBtn")
-        .addEventListener("click", async () => {
-
-          let wavBlob = await cutAudio(audioDataArray);
-          playAudio(wavBlob, "audioElement");
-
-          //to save
-          //to_wav(wavBlob);
-        });
-
-    </code>
-  </div>
-  </body>
-
-  <script type="module">
-    import { AudioData, cutAudio, to_wav, playAudio } from "./cutAudio.js";
+      import { AudioData, cutAudioApp } from "./cutAudio.js";
 
     const audioDataArray = [
       new AudioData("http://127.0.0.1:5500/test_.mp3", 10, 12),
@@ -61,8 +34,37 @@
       .getElementById("cutAudioBtn")
       .addEventListener("click", async () => {
 
-        let wavBlob = await cutAudio(audioDataArray);
-        playAudio(wavBlob, "audioElement");
+        let wavBlob = await cutAudioApp.cutAudio(audioDataArray);
+        // cutAudioApp.to_wav(wavBlob) // to save to wav
+        cutAudioApp.playAudio(wavBlob, "audioElement");
+
+
+      });
+
+
+    </code>
+  </div>
+  </body>
+
+  <script type="module">
+    import { AudioData, cutAudioApp } from "./cutAudio.js";
+
+    const audioDataArray = [
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 10, 12),
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 8, 10),
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 4, 6),
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 2, 4),
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 0, 2),
+    ];
+
+
+    document
+      .getElementById("cutAudioBtn")
+      .addEventListener("click", async () => {
+
+        let wavBlob = await cutAudioApp.cutAudio(audioDataArray);
+        cutAudioApp.to_wav(wavBlob)
+        cutAudioApp.playAudio(wavBlob, "audioElement");
 
 
       });

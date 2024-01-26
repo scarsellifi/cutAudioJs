@@ -280,3 +280,9 @@ export function playAudio(wavBlob, audioElementId) {
   const audioElement = document.getElementById(audioElementId);
   audioElement.src = url;
 }
+
+export const cutAudioApp = {
+  cutAudio: cutAudio,
+  to_wav: to_wav,
+  playAudio: playAudio,
+};
