@@ -63,7 +63,7 @@
       .addEventListener("click", async () => {
 
         let wavBlob = await cutAudioApp.cutAudio(audioDataArray);
-        cutAudioApp.to_wav(wavBlob)
+        //cutAudioApp.to_wav(wavBlob)
         cutAudioApp.playAudio(wavBlob, "audioElement");
 
 
