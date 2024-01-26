@@ -12,7 +12,7 @@
  *   .then(cutBuffer => {
  *     // Do something with the cut audio buffer
  *   })
- *   .catch(error => {
+ *   .catch(error => {to_wav
  *     console.error('Error cutting audio file:', error);
  *   });
  *
@@ -273,4 +273,10 @@ export function to_wav(wavBlob) {
   // Pulizia
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export function playAudio(wavBlob, audioElementId) {
+  const url = URL.createObjectURL(wavBlob);
+  const audioElement = document.getElementById(audioElementId);
+  audioElement.src = url;
 }

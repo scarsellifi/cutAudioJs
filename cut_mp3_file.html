@@ -3,15 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <title>Test Cut Audio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+
+
   </head>
   <body>
     <h1>Test Audio Cutter</h1>
     <button id="cutAudioBtn">Cut and Play Audio</button>
     <audio controls id="audioElement"></audio>
 
-    <script type="module" src="cutAudio.js"></script>
-    <script type="module">
-      import { AudioData, cutAudio, to_wav } from "./cutAudio.js";
+    <div class="explanation">
+    <p>
+      This example demonstrates how to use a simple web application to cut sections from an audio file and play them back. Utilizing modern JavaScript, the webpage allows the user to select specific segments of an audio file and listen to the outcome. The code below is an illustration of how to implement this functionality. It relies on a series of JavaScript functions imported from an external file named <b>cutAudio.js</b>, which handle the process of cutting and converting the audio into WAV format. The user interface consists of a straightforward button that, when clicked, initiates the audio cutting and playback process of the selected audio file. Here's a detailed look at how the code operates:
+    </p>
+
+    <pre><code>
+      import { AudioData, cutAudio, to_wav, playAudio } from "./cutAudio.js";
 
       const audioDataArray = [
         new AudioData("http://127.0.0.1:5500/test_.mp3", 10, 12),
@@ -21,14 +29,44 @@
         new AudioData("http://127.0.0.1:5500/test_.mp3", 0, 2),
       ];
 
-      // Modifica il listener per gestire la promessa
+
       document
         .getElementById("cutAudioBtn")
         .addEventListener("click", async () => {
-          // Crea un URL oggetto dal Blob
+
           let wavBlob = await cutAudio(audioDataArray);
-          to_wav(wavBlob);
+          playAudio(wavBlob, "audioElement");
+
+          //to save
+          //to_wav(wavBlob);
         });
-    </script>
+
+    </code>
+  </div>
   </body>
+
+  <script type="module">
+    import { AudioData, cutAudio, to_wav, playAudio } from "./cutAudio.js";
+
+    const audioDataArray = [
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 10, 12),
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 8, 10),
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 4, 6),
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 2, 4),
+      new AudioData("http://127.0.0.1:5500/test_.mp3", 0, 2),
+    ];
+
+
+    document
+      .getElementById("cutAudioBtn")
+      .addEventListener("click", async () => {
+
+        let wavBlob = await cutAudio(audioDataArray);
+        playAudio(wavBlob, "audioElement");
+
+
+      });
+  </script>
+
+
 </html>
