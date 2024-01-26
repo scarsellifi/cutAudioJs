@@ -211,3 +211,66 @@ export function concatenateAudioBuffers(audioBuffers) {
 
   return concatenatedBuffer;
 }
+
+export function fetchAudioBuffer(audioDataArray) {
+  // Usa map per creare un array di promesse
+  const promises = audioDataArray.map(async (audiodata) => {
+    const response = await fetch(audiodata.url);
+    console.log("file download");
+    const arrayBuffer = await response.arrayBuffer();
+    console.log("file buffer");
+    console.log(arrayBuffer);
+    const cutBuffer = await cutAudioFileAsync(
+      arrayBuffer,
+      audiodata.start,
+      audiodata.stop
+    );
+    console.log("file cut");
+    console.log(cutBuffer);
+    audiodata.setAudioBuffer(cutBuffer);
+  });
+
+  // Restituisce una promessa che si risolve quando tutte le promesse nell'array sono risolte
+  return Promise.all(promises);
+}
+
+export function printAudioBuffersDetails() {
+  const allAudioBuffers = AudioData.getAllAudioBuffers();
+  allAudioBuffers.forEach((audioBuffer, index) => {
+    console.dir(audioBuffer);
+    console.log(`AudioBuffer ${index}:`);
+    // Qui puoi accedere a specifiche proprietà dell'AudioBuffer
+    // Ad esempio, length, duration, sampleRate, etc.
+    console.log(`  Length: ${audioBuffer.length}`);
+    console.log(`  Duration: ${audioBuffer.duration}`);
+    console.log(`  Sample Rate: ${audioBuffer.sampleRate}`);
+    // Aggiungi altre proprietà che desideri visualizzare
+  });
+}
+
+export async function cutAudio(audioDataArray) {
+  await fetchAudioBuffer(audioDataArray);
+  console.log(audioDataArray);
+
+  console.log(`allAudioBuffer ${AudioData.getAllAudioBuffers()} --- `);
+  printAudioBuffersDetails();
+
+  const cutBuffer = concatenateAudioBuffers(AudioData.getAllAudioBuffers());
+  const wavBlob = await convertAudioBufferToWavBlob(cutBuffer);
+  return wavBlob;
+}
+
+export function to_wav(wavBlob) {
+  const url = URL.createObjectURL(wavBlob);
+
+  // Crea un elemento <a> per il download
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "test_2.wav"; // Nota: il file sarà WAV, non MP3
+  document.body.appendChild(a);
+  a.click();
+
+  // Pulizia
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

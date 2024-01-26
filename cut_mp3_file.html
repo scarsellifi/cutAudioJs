@@ -11,131 +11,24 @@
 
     <script type="module" src="cutAudio.js"></script>
     <script type="module">
-      import {
-        cutAudioFileAsync,
-        convertAudioBufferToWavBlob,
-        AudioData,
-        concatenateAudioBuffers,
-      } from "./cutAudio.js";
+      import { AudioData, cutAudio, to_wav } from "./cutAudio.js";
 
       const audioDataArray = [
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
-        new AudioData("http://127.0.0.1:5500/test_.mp3", 0.523, 2.341),
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 10, 12),
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 8, 10),
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 4, 6),
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 2, 4),
+        new AudioData("http://127.0.0.1:5500/test_.mp3", 0, 2),
       ];
-
-      function printAudioBuffersDetails() {
-        const allAudioBuffers = AudioData.getAllAudioBuffers();
-        allAudioBuffers.forEach((audioBuffer, index) => {
-          console.dir(audioBuffer);
-          console.log(`AudioBuffer ${index}:`);
-          // Qui puoi accedere a specifiche proprietà dell'AudioBuffer
-          // Ad esempio, length, duration, sampleRate, etc.
-          console.log(`  Length: ${audioBuffer.length}`);
-          console.log(`  Duration: ${audioBuffer.duration}`);
-          console.log(`  Sample Rate: ${audioBuffer.sampleRate}`);
-          // Aggiungi altre proprietà che desideri visualizzare
-        });
-      }
-
-      function fetchAudioBuffer(audioDataArray) {
-        // Usa map per creare un array di promesse
-        const promises = audioDataArray.map(async (audiodata) => {
-          const response = await fetch(audiodata.url);
-          console.log("file download");
-          const arrayBuffer = await response.arrayBuffer();
-          console.log("file buffer");
-          console.log(arrayBuffer);
-          const cutBuffer = await cutAudioFileAsync(
-            arrayBuffer,
-            audiodata.start,
-            audiodata.stop
-          );
-          console.log("file cut");
-          console.log(cutBuffer);
-          audiodata.setAudioBuffer(cutBuffer);
-        });
-
-        // Restituisce una promessa che si risolve quando tutte le promesse nell'array sono risolte
-        return Promise.all(promises);
-      }
 
       // Modifica il listener per gestire la promessa
       document
         .getElementById("cutAudioBtn")
         .addEventListener("click", async () => {
-          await fetchAudioBuffer(audioDataArray);
-          console.log(audioDataArray);
-
-          console.log(`allAudioBuffer ${AudioData.getAllAudioBuffers()} --- `);
-          printAudioBuffersDetails();
-
-          const cutBuffer = concatenateAudioBuffers(
-            AudioData.getAllAudioBuffers()
-          );
-          const wavBlob = await convertAudioBufferToWavBlob(cutBuffer);
-
           // Crea un URL oggetto dal Blob
-          const url = URL.createObjectURL(wavBlob);
-
-          // Crea un elemento <a> per il download
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "test_2.wav"; // Nota: il file sarà WAV, non MP3
-          document.body.appendChild(a);
-          a.click();
-
-          // Pulizia
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+          let wavBlob = await cutAudio(audioDataArray);
+          to_wav(wavBlob);
         });
-
-      /*document
-        .getElementById("cutAudioBtn")
-        .addEventListener("click", async () => {
-          fetchAudioBuffer(audioDataArray);
-          console.log(audioDataArray);
-          console.log(`allAudioBuffer ${AudioData.getAllAudioBuffers()} --- `);
-
-          try {
-            const response = await fetch("http://127.0.0.1:5500/test_.mp3");
-            console.log("file download");
-            const arrayBuffer = await response.arrayBuffer();
-            console.log("file buffer");
-            console.log(arrayBuffer);
-            const cutBuffer = await cutAudioFileAsync(
-              arrayBuffer,
-              0.523,
-              2.341
-            );
-            console.log("file cut");
-            console.log(cutBuffer);
-
-            // Converti AudioBuffer in Blob (WAV)
-            const wavBlob = await convertAudioBufferToWavBlob(cutBuffer);
-
-            // Crea un URL oggetto dal Blob
-            const url = URL.createObjectURL(wavBlob);
-
-            // Crea un elemento <a> per il download
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "test_2.wav"; // Nota: il file sarà WAV, non MP3
-            document.body.appendChild(a);
-            a.click();
-
-            // Pulizia
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-          } catch (error) {
-            console.error("Error cutting and playing audio:", error);
-          }
-
-        });
-        */
     </script>
   </body>
 </html>
