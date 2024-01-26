@@ -5,7 +5,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
+  max-width: 800px;
+  min-width: 340px;
   margin: 0;
 }
 
@@ -60,12 +61,12 @@ code {
   color: #333;
   line-height: 1.6;
   max-width: 800px;
+  min-width: 320px;
 }
 
 pre {
   background-color: #f5f5f5;
   border: 1px solid #ddd;
-  overflow-x: auto;
   padding: 15px;
   margin-top: 20px;
 }
@@ -74,4 +75,10 @@ code {
   color: #007bff;
   font-family: "Courier New", Courier, monospace;
   font-size: 1em; /* Adjust the font size as needed */
+}
+
+@media screen and (max-width: 600px) {
+  code {
+    font-size: 0.5em; /* Riduci la dimensione del testo per schermi piccoli */
+  }
 }
