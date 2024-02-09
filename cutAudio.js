@@ -212,26 +212,36 @@ export function concatenateAudioBuffers(audioBuffers) {
   return concatenatedBuffer;
 }
 
-export function fetchAudioBuffer(audioDataArray) {
-  // Usa map per creare un array di promesse
-  const promises = audioDataArray.map(async (audiodata) => {
-    const response = await fetch(audiodata.url);
-    console.log("file download");
-    const arrayBuffer = await response.arrayBuffer();
-    console.log("file buffer");
-    console.log(arrayBuffer);
-    const cutBuffer = await cutAudioFileAsync(
-      arrayBuffer,
-      audiodata.start,
-      audiodata.stop
-    );
-    console.log("file cut");
-    console.log(cutBuffer);
-    audiodata.setAudioBuffer(cutBuffer);
-  });
+export async function fetchAudioBuffer(audioDataArray) {
+  // Array per tenere traccia dei buffer audio elaborati
+  let processedAudioBuffers = [];
 
-  // Restituisce una promessa che si risolve quando tutte le promesse nell'array sono risolte
-  return Promise.all(promises);
+  for (const audiodata of audioDataArray) {
+    try {
+      // Scarica i dati audio come ArrayBuffer
+      const response = await fetch(audiodata.url);
+      const arrayBuffer = await response.arrayBuffer();
+
+      // Taglia il buffer audio in base agli istanti di inizio e fine specificati
+      const cutBuffer = await cutAudioFileAsync(
+        arrayBuffer,
+        audiodata.start,
+        audiodata.stop
+      );
+
+      // Imposta il buffer audio tagliato per l'oggetto AudioData corrente
+      audiodata.setAudioBuffer(cutBuffer);
+
+      // Aggiungi il buffer audio tagliato all'array di buffer processati
+      processedAudioBuffers.push(cutBuffer);
+    } catch (error) {
+      console.error("Errore durante l'elaborazione dei dati audio:", error);
+      // Aggiungi qui eventuali logiche di gestione degli errori
+    }
+  }
+
+  // Restituisce l'array di buffer audio processati, mantenendo l'ordine
+  return processedAudioBuffers;
 }
 
 export function printAudioBuffersDetails() {
